@@ -226,3 +226,35 @@ export async function updateTask(id, updates) {
   }
   return updatedTask;
 }
+
+export async function deleteTask(id) {
+  // 1. Check if Vercel Postgres is available
+  if (process.env.POSTGRES_URL) {
+    try {
+      const { sql } = await import('@vercel/postgres');
+      await sql`DELETE FROM tasks WHERE id = ${id};`;
+      return true;
+    } catch (dbError) {
+      console.error('Vercel Postgres delete error, falling back:', dbError);
+    }
+  }
+
+  // 2. Check if Vercel KV is available
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv } = await import('@vercel/kv');
+      const tasks = await kv.get('tasks') || [];
+      const updatedTasks = tasks.filter(task => task.id !== id);
+      await kv.set('tasks', updatedTasks);
+      return true;
+    } catch (kvError) {
+      console.error('Vercel KV delete error, falling back:', kvError);
+    }
+  }
+
+  // 3. Local fallback
+  const tasks = readLocalDb();
+  const updatedTasks = tasks.filter(task => task.id !== id);
+  writeLocalDb(updatedTasks);
+  return true;
+}

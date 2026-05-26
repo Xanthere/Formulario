@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTasks, createTask, updateTask } from '@/lib/db';
+import { getTasks, createTask, updateTask, deleteTask } from '@/lib/db';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
@@ -92,5 +92,33 @@ export async function PUT(request) {
   } catch (error) {
     console.error('Error updating task API:', error);
     return NextResponse.json({ error: 'Error al actualizar la tarea' }, { status: 500 });
+  }
+}
+
+// DELETE task
+export async function DELETE(request) {
+  try {
+    // 1. Verify user is logged in
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json({ error: 'No autorizado. Debe iniciar sesión.' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'El ID de la tarea es requerido' }, { status: 400 });
+    }
+
+    const success = await deleteTask(id);
+    if (!success) {
+      return NextResponse.json({ error: 'No se pudo eliminar la tarea' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Tarea eliminada' }, { status: 200 });
+  } catch (error) {
+    console.error('Error deleting task API:', error);
+    return NextResponse.json({ error: 'Error al eliminar la tarea' }, { status: 500 });
   }
 }

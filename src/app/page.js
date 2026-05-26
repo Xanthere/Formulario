@@ -15,6 +15,9 @@ export default function Home() {
   // Toast Notification
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
+  // Expanded Tasks map
+  const [expandedTasks, setExpandedTasks] = useState({});
+
   // Form Fields for New Request
   const [requesterName, setRequesterName] = useState('');
   const [companyArea, setCompanyArea] = useState('');
@@ -235,6 +238,38 @@ export default function Home() {
     }
   };
 
+  // Toggle description expand
+  const toggleExpandTask = (id) => {
+    setExpandedTasks(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  // Handle task deletion (Admin only)
+  const handleDeleteTask = async (id) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta solicitud de tarea?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tasks?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setTasks(prev => prev.filter(task => task.id !== id));
+        showToast('Solicitud eliminada exitosamente', 'success');
+      } else {
+        const errorData = await res.json();
+        showToast(errorData.error || 'Error al eliminar la solicitud', 'error');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      showToast('Error al eliminar la solicitud', 'error');
+    }
+  };
+
   // Beautiful format for date display
   const formatDateDisplay = (dateString) => {
     if (!dateString) return '';
@@ -343,6 +378,7 @@ export default function Home() {
                     <th>Descripción de la Tarea</th>
                     <th>Prioridad</th>
                     <th>Estado</th>
+                    {isLoggedIn && <th>Acciones</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -372,8 +408,8 @@ export default function Home() {
                           <span className="date-text">{formatDateDisplay(task.fechaLimite)}</span>
                         )}
                       </td>
-                      <td>
-                        <div className="desc-text" title={task.descripcion}>
+                      <td onClick={() => toggleExpandTask(task.id)} style={{ cursor: 'pointer' }}>
+                        <div className={`desc-text ${expandedTasks[task.id] ? 'expanded' : ''}`} title="Haz clic para ver más / menos">
                           {task.descripcion}
                         </div>
                       </td>
@@ -411,6 +447,21 @@ export default function Home() {
                           </span>
                         )}
                       </td>
+                      {isLoggedIn && (
+                        <td>
+                          <button
+                            className="btn btn-danger"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            onClick={() => handleDeleteTask(task.id)}
+                            title="Eliminar esta solicitud"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+                            </svg>
+                            Eliminar
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
